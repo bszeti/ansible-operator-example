@@ -1,0 +1,6 @@
+apiVersion: cache.bszeti.github.com/v1alpha1
+kind: Memcached
+metadata:
+  name: memcached-sample
+spec:
+  size: 1

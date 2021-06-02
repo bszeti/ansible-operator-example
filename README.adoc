@@ -1,0 +1,56 @@
+# Example Ansible Operator
+
+Init and simple deployment:
+```
+operator-sdk init --domain bszeti.github.com --plugins ansible
+operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role
+make docker-build docker-push IMG="quay.io/bszeti/memcached-operator:v0.0.1"
+
+make deploy IMG="quay.io/bszeti/memcached-operator:v0.0.1"
+kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
+
+make undeploy
+
+```
+
+## Resources created:
+
+`oc kustomize config/default`
+
+* namespace/bszeti-operator-system
+* customresourcedefinition.apiextensions.k8s.io/memcacheds.cache.bszeti.github.com
+* serviceaccount/bszeti-operator-controller-manager
+* role.rbac.authorization.k8s.io/bszeti-operator-leader-election-role
+* clusterrole.rbac.authorization.k8s.io/bszeti-operator-manager-role
+* rolebinding.rbac.authorization.k8s.io/bszeti-operator-leader-election-rolebinding
+* clusterrolebinding.rbac.authorization.k8s.io/bszeti-operator-manager-rolebinding
+* configmap/bszeti-operator-manager-config
+* deployment.apps/bszeti-operator-controller-manager
+
+## Deployment Namespace
+
+### Deploy in a new namespace
+
+* `config/default/kustomization.yaml`: Set `namespace` - should start with `namePrefix` to create a new Namespace correctly.
+* `config/default/kustomization.yaml`: Set `namePrefix` to anyting
+
+### Deploy in existing namespace
+
+* `config/manager/manager.yaml`: Remove `Namespace`
+* `config/default/kustomization.yaml`: Set `namespace` to existing namespace
+* `config/default/kustomization.yaml`: Set `namePrefix` to anyting
+
+[NOTE]
+A `ClusterRole` is created for the operator and all namespaces are monitored, so have only one operator deployment in the cluster.
+
+## Notes
+
+### Set image url
+
+* `Makefile`: Set `IMAGE_TAG_BASE` and `VERSION`
+* `Makefile`: Change `IMG ?= $(IMAGE_TAG_BASE):v$(VERSION)`
+
+Then simply `make docker-build docker-push` and `make deploy` can be used.
+
+[NOTE]
+Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching, because version is not `latest`.
