@@ -28,3 +28,14 @@
               image: "docker.io/memcached:1.4.36-alpine"
               ports:
                 - containerPort: 11211
+
+- name: create configmap
+  community.kubernetes.k8s:
+    definition:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-configmap'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      data:
+        foo: '{{ foo_value }}'

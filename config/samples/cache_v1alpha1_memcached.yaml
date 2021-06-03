@@ -1,6 +1,7 @@
 apiVersion: cache.bszeti.github.com/v1alpha1
 kind: Memcached
 metadata:
-  name: memcached-sample
+  name: myinstance
 spec:
   size: 1
+  fooValue: mymessage
