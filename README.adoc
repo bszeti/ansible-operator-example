@@ -29,6 +29,8 @@ make undeploy
 
 ## Deployment Namespace
 
+The default generated deployment creates a new namespace when `make deploy` is run.
+
 ### Deploy in a new namespace
 
 * `config/default/kustomization.yaml`: Set `namespace` - should start with `namePrefix` to create a new Namespace correctly.
@@ -41,16 +43,33 @@ make undeploy
 * `config/default/kustomization.yaml`: Set `namePrefix` to anyting
 
 [NOTE]
-A `ClusterRole` is created for the operator and all namespaces are monitored, so have only one operator deployment in the cluster.
+By default a `ClusterRole` is created for the operator and all namespaces are monitored, so have only one operator deployment in the cluster.
 
 ## Notes
 
 ### Set image url
 
 * `Makefile`: Set `IMAGE_TAG_BASE` and `VERSION`
-* `Makefile`: Change `IMG ?= $(IMAGE_TAG_BASE):v$(VERSION)`
+* `Makefile`: Change `IMG ?= $(IMAGE_TAG_BASE):$(VERSION)`
 
 Then simply `make docker-build docker-push` and `make deploy` can be used.
 
 [NOTE]
-Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching, because version is not `latest`.
+Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching, if version is not `latest`.
+
+## Molecule tests
+
+For the generated `default` molecule test:
+* Use _kustomize_ version 3.5.4. It's expected on the path: `cp bin/kustomize /usr/local/bin/kustomize`
+* Install _yamllint_: `brew install yamllint`
+* Error `ModuleNotFoundError: No module named 'openshift'`: `pip install openshift`
+* Set `export OPERATOR_IMAGE=quay.io/bszeti/memcached-operator:v0.0.1` this sets `newName: quay.io/bszeti/memcached-operator` and `newTag: v0.0.1` in `config/testing/kustomization.yaml`
+
+Run test:
+```
+mulecule coverage
+molecule destroy
+# or
+molecule test
+```
+Tests are run in an `osdk-test` namespace in the currently logged in cluster.

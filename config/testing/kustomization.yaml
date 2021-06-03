@@ -20,4 +20,5 @@ resources:
 - ../manager
 images:
 - name: testing
-  newName: testing-operator
+  newName: quay.io/bszeti/memcached-operator
+  newTag: v0.0.1
