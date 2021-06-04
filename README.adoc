@@ -125,6 +125,14 @@ In case of errors the operator Pod log and the resources in the namespace are co
 [NOTE]
 The `molecule test` deletes and recreates the CRD which can be inconvinient on a shared development cluster. Remove `../crd` from `resources` in `config/testing/kustomization.yaml` to avoid the test touching the CRD.
 
+### Local testing
+
+Local testing can be performed with a temporary Kubernets cluster using https://kind.sigs.k8s.io/[kind]:
+
+* Install _kind_: `brew install kind`
+* Install `docker` python module: `pip install docker`
+* Run test: `molecule test -s kind`
+
 *Adhoc idempotency errors?*
 ```
 CRITICAL Idempotence test failed because of the following tasks:
