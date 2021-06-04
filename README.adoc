@@ -59,6 +59,8 @@ Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching,
 
 ## Watch self namespace only
 
+By default the operator monitors all namespaces. The Deployment can be changed to operate within the self namespace only:
+
 * `config/rbac/kustomization.yaml`: Use _Role_ (`config/rbac/role*.yaml`) instead of _ClusterRole_ (`config/rbac/clusterrole*.yaml`)
 * `config/manager/manager.yaml` Add _WATCH_NAMESPACE_ env var for operator Deployment:
 +
@@ -71,7 +73,7 @@ env:
 ```
 
 
-## Manifest templates in files 
+## Manifest templates in files
 
 ## Molecule tests
 
