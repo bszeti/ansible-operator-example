@@ -60,6 +60,7 @@ Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching,
 ## Molecule tests
 
 For the generated `default` molecule test:
+
 * Use _kustomize_ version 3.5.4. It's expected on the path: `cp bin/kustomize /usr/local/bin/kustomize`
 * Install _yamllint_: `brew install yamllint`
 * Error `ModuleNotFoundError: No module named 'openshift'`: `pip install openshift`
