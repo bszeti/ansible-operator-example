@@ -13,7 +13,24 @@
   vars:
     cr_file: 'cache_v1alpha1_memcached.yaml'
 
-- name: Add assertions here
+
+- name: Debug CM
+  debug: var=cm
+  vars:
+    cm: '{{ lookup("community.kubernetes.k8s", api_version="v1", kind="ConfigMap", namespace=namespace, resource_name="myinstance-configmap") }}'
+- name: Assert CM
   assert:
-    that: false
-    fail_msg: FIXME Add real assertions for your operator
+    that: cm.data.foo == 'mymessage'
+    fail_msg: Message is wrong in ConfigMap
+  vars:
+    cm: '{{ lookup("community.kubernetes.k8s", api_version="v1", kind="ConfigMap", namespace=namespace, resource_name="myinstance-configmap") }}'
+- name: Assert Deplopyment
+  assert:
+    that:
+    - deployment.spec.replicas == 2
+  vars:
+    deployment: '{{ lookup("community.kubernetes.k8s", api_version="v1", kind="Deployment", namespace=namespace, resource_name="myinstance-memcached") }}'
+# - name: Add assertions here
+#   assert:
+#     that: false
+#     fail_msg: FIXME Add real assertions for your operator

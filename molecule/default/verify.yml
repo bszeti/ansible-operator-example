@@ -26,8 +26,8 @@
               kind: Pod
             - api_version: apps/v1
               kind: Deployment
-            - api_version: v1
-              kind: Secret
+            # - api_version: v1
+            #   kind: Secret
             - api_version: v1
               kind: ConfigMap
           register: debug_resources
@@ -44,10 +44,10 @@
           debug:
             var: debug_resources
 
-        - name: Output gathered logs
-          debug:
-            var: item.log_lines
-          loop: '{{ debug_logs.results }}'
+        # - name: Output gathered logs
+        #   debug:
+        #     var: item.log_lines
+        #   loop: '{{ debug_logs.results }}'
 
         - name: Re-emit failure
           vars:

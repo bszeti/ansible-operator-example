@@ -1,11 +1,12 @@
 # Adds namespace to all resources.
-namespace: osdk-test
+namespace: my-osdk-test
 
-namePrefix: osdk-
+namePrefix: my-osdk-
 
 # Labels to add to all resources and selectors.
 #commonLabels:
 #  someName: someValue
+
 
 patchesStrategicMerge:
 - manager_image.yaml
@@ -14,8 +15,8 @@ patchesStrategicMerge:
 
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# - ../crd
 resources:
-- ../crd
 - ../rbac
 - ../manager
 images:
