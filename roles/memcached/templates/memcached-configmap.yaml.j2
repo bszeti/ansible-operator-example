@@ -1,0 +1,7 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: '{{ ansible_operator_meta.name }}-configmap'
+  namespace: '{{ ansible_operator_meta.namespace }}'
+data:
+  foo: '{{ foo_value }}'

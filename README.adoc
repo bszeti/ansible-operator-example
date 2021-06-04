@@ -75,6 +75,28 @@ env:
 
 ## Manifest templates in files
 
+Must use _lookup_:
+`definition: "{{ lookup('template','file-name.yaml.j2') | from_yaml }}"`
+
+Path searched for file:
+```
+operator-root/roles/memcached/templates/file-name.yaml.j2
+operator-root/roles/memcached/file-name.yaml.j2
+operator-root/roles/memcached/tasks/templates/file-name.yaml.j2
+operator-root/roles/memcached/tasks/file-name.yaml.j2
+```
+
+Doesn't work without lookup. Tried:
+
+* `src: 'templates/file-name.yaml.j2'`
++
+Doesn't use it as Jinja template
+
+* `template: 'templates/file-name.yaml.j2'`
++
+Works only in local run, not in container.
+
+
 ## Molecule tests
 
 For the generated `default` molecule test:
