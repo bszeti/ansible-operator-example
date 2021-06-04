@@ -57,6 +57,22 @@ Then simply `make docker-build docker-push` and `make deploy` can be used.
 [NOTE]
 Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching, if version is not `latest`.
 
+## Watch self namespace only
+
+* `config/rbac/kustomization.yaml`: Use _Role_ (`config/rbac/role*.yaml`) instead of _ClusterRole_ (`config/rbac/clusterrole*.yaml`)
+* `config/manager/manager.yaml` Add _WATCH_NAMESPACE_ env var for operator Deployment:
++
+```
+env:
+  - name: WATCH_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+```
+
+
+## Manifest templates in files 
+
 ## Molecule tests
 
 For the generated `default` molecule test:
@@ -75,3 +91,4 @@ molecule destroy
 molecule test
 ```
 Tests are run in an `osdk-test` namespace in the currently logged in cluster.
+
