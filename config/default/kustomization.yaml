@@ -1,6 +1,6 @@
 # Adds namespace to all resources.
 # namespace: bszeti-operator-system
-namespace: bszeti
+namespace: sf-test
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
@@ -8,7 +8,7 @@ namespace: bszeti
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
 # namePrefix: bszeti-operator-
-namePrefix: bszeti-operator-
+namePrefix: sf-test-operator-
 
 # Labels to add to all resources and selectors.
 #commonLabels:

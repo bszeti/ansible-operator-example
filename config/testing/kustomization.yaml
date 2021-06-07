@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: bszeti-osdk-test
+namespace: sforeman-osdk-test
 
 namePrefix: my-osdk-
 
@@ -22,5 +22,5 @@ resources:
 - ../manager
 images:
 - name: testing
-  newName: quay.io/bszeti/memcached-operator
+  newName: quay.io/sforeman/memcached-operator
   newTag: v0.0.1
