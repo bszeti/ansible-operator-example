@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: my-osdk-test
+namespace: bszeti-osdk-test
 
 namePrefix: my-osdk-
 
@@ -13,6 +13,7 @@ patchesStrategicMerge:
 - debug_logs_patch.yaml
 - ../default/manager_auth_proxy_patch.yaml
 
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -21,4 +22,5 @@ resources:
 - ../manager
 images:
 - name: testing
-  newName: testing-operator
+  newName: quay.io/bszeti/memcached-operator
+  newTag: v0.0.1

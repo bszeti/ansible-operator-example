@@ -12,4 +12,8 @@
     definition: '{{ item }}'
     state: '{{ state }}'
     wait: yes
+  # Don't delete the CustomResourceDefinition during test
+  when: not (item.kind == 'CustomResourceDefinition' and state == 'absent')
   loop: '{{ resources.stdout | from_yaml_all | list }}'
+
+  # TODO: how  env var MOLECULE_SCENARIO_NAME

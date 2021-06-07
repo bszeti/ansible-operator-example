@@ -1,9 +1,9 @@
 apiVersion: cache.bszeti.github.com/v1alpha1
 kind: Memcached
 metadata:
-  name: myinstance
+  name: test1
   annotations:
     ansible.sdk.operatorframework.io/reconcile-period: 60s
 spec:
-  size: 2
+  size: 1
   fooValue: mymessage

@@ -1,0 +1,32 @@
+---
+- name: Create CR Test2
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    definition: "{{ lookup('template', cr_file) | from_yaml }}"
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Running
+      reason: Successful
+      status: "True"
+  vars:
+    cr_file: 'memcached_2_test_cr.yaml'
+
+- name: Debug CM
+  debug: var=cm
+  vars:
+    cm: '{{ lookup("community.kubernetes.k8s", api_version="v1", kind="ConfigMap", namespace=namespace, resource_name="test2-configmap") }}'
+- name: Assert CM
+  assert:
+    that: cm.data.foo == 'Hello World!'
+    fail_msg: Message is wrong in ConfigMap
+  vars:
+    cm: '{{ lookup("community.kubernetes.k8s", api_version="v1", kind="ConfigMap", namespace=namespace, resource_name="test2-configmap") }}'
+- name: Assert Deplopyment
+  assert:
+    that:
+    - deployment.spec.replicas == 2
+  vars:
+    deployment: '{{ lookup("community.kubernetes.k8s", api_version="v1", kind="Deployment", namespace=namespace, resource_name="test2-memcached") }}'
+
