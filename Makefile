@@ -29,7 +29,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # bszeti.github.com/memcached-operator-bundle:$VERSION and bszeti.github.com/memcached-operator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= quay.io/sforeman/memcached-operator
+IMAGE_TAG_BASE ?= default-route-openshift-image-registry.apps.cluster-8e72.sandbox1745.opentlc.com/sforeman/memcached-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)

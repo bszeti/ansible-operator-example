@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: sforeman-osdk-test
+namespace: sforeman-test
 
 namePrefix: my-osdk-
 
@@ -22,5 +22,5 @@ resources:
 - ../manager
 images:
 - name: testing
-  newName: quay.io/sforeman/memcached-operator
+  newName: image-registry.openshift-image-registry.svc:5000/sforeman/memcached-operator
   newTag: v0.0.1
