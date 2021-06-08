@@ -139,3 +139,30 @@ CRITICAL Idempotence test failed because of the following tasks:
 *  => (item={'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'labels': {'control-plane': 'controller-manager'}, 'name': 'osdk-controller-manager', 'namespace': 'my-osdk-test'}, 'spec': {'replicas': 1, 'selector': {'matchLabels': {'control-plane': 'controller-manager'}}, 'template': {'metadata': {'labels': {'control-plane': 'controller-manager'}}, 'spec': {'containers': [{'args': ['--secure-listen-address=0.0.0.0:8443', '--upstream=http://127.0.0.1:8080/', '--logtostderr=true', '--v=10'], 'image': 'gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0', 'name': 'kube-rbac-proxy', 'ports': [{'containerPort': 8443, 'name': 'https'}]}, {'args': ['--health-probe-bind-address=:6789', '--metrics-bind-address=127.0.0.1:8080', '--leader-elect', '--leader-election-id=memcached-operator'], 'env': [{'name': 'ANSIBLE_GATHERING', 'value': 'explicit'}, {'name': 'WATCH_NAMESPACE', 'valueFrom': {'fieldRef': {'fieldPath': 'metadata.namespace'}}}], 'image': 'quay.io/bszeti/memcached-operator:v0.0.1', 'imagePullPolicy': 'Always', 'livenessProbe': {'httpGet': {'path': '/healthz', 'port': 6789}, 'initialDelaySeconds': 15, 'periodSeconds': 20}, 'name': 'manager', 'readinessProbe': {'httpGet': {'path': '/readyz', 'port': 6789}, 'initialDelaySeconds': 5, 'periodSeconds': 10}, 'securityContext': {'allowPrivilegeEscalation': False}}] => Set resources to present
 WARNING  An error occurred during the test sequence action: 'idempotence'. Cleaning up.
 ```
+
+### Use internal registry
+
+Documentation details can be found https://docs.openshift.com/container-platform/4.7/registry/architecture-component-imageregistry.html[here].
+
+After exposing the internal registry, complete the following steps:
+
+* Find the internal registry route by: `oc get route -n openshift-internal-registry`
+* Add this route as an insecure registry on podman to `~/.config/containers/registries.conf`:
+  
+  ```
+  [[registry]]
+  location={{hostname}}
+  insecure=true
+  ```
+  
+* Login to registry on podman or docker: `podman login -u kubeadmin -p $(oc whoami -t)`
+* Export environment variables for the namespace used by Molecule (`export TEST_OPERATOR_NAMESPACE=`) and by the image (`export OPERATOR_IMAGE_NAME=`)
+* Add the image-puller role to the Molecule testing namespace:
+
+```
+oc policy add-role-to-group  system:image-puller system:serviceaccounts:TEST_OPERATOR_NAMESPACE --namespace=OPERATOR_IMAGE_NAMESPACE
+```
+
+Make sure the namespace used for Molecule testing is separate from the namespace where the image lives in the internal registry, since Molecule will destroy its specified namespace after testing.
+
+Also note that the Molecule test itself should use the internal route: `image-registry.openshift-image-registry.svc:5000`
