@@ -123,7 +123,14 @@ In case of errors the operator Pod log and the resources in the namespace are co
 * Or collect less manifests, e.g. remove `Secret` under `Retrieve relevant resources` in `molecule/default/verify.yml`
 
 [NOTE]
+====
 The `molecule test` deletes and recreates the CRD which can be inconvinient on a shared development cluster. Remove `../crd` from `resources` in `config/testing/kustomization.yaml` to avoid the test touching the CRD.
+Alternatively we can skip deleteing the CRD in `molecule/default/kustomize.yml`:
+
+```
+when: not (item.kind == 'CustomResourceDefinition' and state == 'absent')
+```
+====
 
 ### Local testing
 
@@ -132,6 +139,51 @@ Local testing can be performed with a temporary Kubernets cluster using https://
 * Install _kind_: `brew install kind`
 * Install `docker` python module: `pip install docker`
 * Run test: `molecule test -s kind`
+
+Run ansible-operator locally:
+```
+export WATCH_NAMESPACE=bszeti
+ansible-operator run 2>&1 | grep '^{' | jq  .
+# or 
+make run 2>&1 | grep '^{' | jq  .
+```
+
+[NOTE]
+On Mac, socket files are left behind causing unnecessary error logs. Add delete step to `run` command: `rm $(wildcard /tmp/ansibleoperator-*) 2>/dev/null || true`
+
+## PostgreSQL database
+
+Image: docker hub postgres:11
+Image: registry.redhat.io/rhel8/postgresql-12:1
+Env vars:
+ - POSTGRESQL_USER=dbuser
+ - POSTGRESQL_PASSWORD=secret
+ - POSTGRESQL_DATABASE=db
+ - POSTGRESQL_ADMIN_PASSWORD
+resources:
+volume: /var/lib/pgsql/data
+size: 
+
+Secret: [postgresql-]
+apiVersion: v1
+kind: Secret
+  metadata:
+    labels:
+      pg-cluster: ${your-cluster-name}
+    name: ${your-cluster-name}-${your-custom-user}-secret
+type: Opaque
+stringData:
+  username: ${your-custom-user}
+  password: SECRET
+
+Certificate-Based Authentication?
+
+Common labels for all resources.
+
+- name: POSTGRESQL_DATABASE
+            #   value
+
+## TODO
 
 *Adhoc idempotency errors?*
 ```

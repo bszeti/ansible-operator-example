@@ -3,9 +3,16 @@
   community.kubernetes.k8s:
     definition: "{{ lookup('template','memcached-deployment.yaml.j2') | from_yaml }}"
 
+- name: create postgresql admin secret
+  community.kubernetes.k8s:
+    definition: "{{ lookup('template','postgresql-admin-secret.yaml.j2') | from_yaml }}"
+  when: postgresql.createInstance 
+  # and lookup('k8s',kind='Secret', namespace=ansible_operator_meta.namespace, resource_name=ansible_operator_meta.name+"--postgresql-admin')
+
 - name: deploy postgresql
   community.kubernetes.k8s:
     definition: "{{ lookup('template','postgresql.yaml.j2') | from_yaml_all | list }}"
+  when: postgresql.createInstance
 
 # - name: create postgresql-pvc
 #   community.kubernetes.k8s:

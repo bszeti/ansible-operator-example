@@ -52,13 +52,13 @@ spec:
             #     secretKeyRef:
             #       name: postgresql
             #       key: database
-            - name: POSTGRESQL_ADMIN_PASSWORD
-              value: secret
             # - name: POSTGRESQL_ADMIN_PASSWORD
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: postgresql-admin
-            #       key: password
+            #   value: secret
+            - name: POSTGRESQL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ ansible_operator_meta.name }}-postgresql-admin'
+                  key: password
           ports:
             - name: postgres
               containerPort: 5432

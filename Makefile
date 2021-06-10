@@ -60,6 +60,7 @@ help: ## Display this help.
 ##@ Build
 
 run: ansible-operator ## Run against the configured Kubernetes cluster in ~/.kube/config
+	rm $(wildcard /tmp/ansibleoperator-*) 2>/dev/null || true #On Mac, socket files are left behind causing unnecessary error logs
 	$(ANSIBLE_OPERATOR) run
 
 docker-build: ## Build docker image with the manager.

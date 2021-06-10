@@ -2,3 +2,7 @@
 # defaults file for Memcached
 size: 1
 foo: default message
+postgresql:
+  createInstance: True
+  adminSecret:
+    name: postgresql-postgres-secret
