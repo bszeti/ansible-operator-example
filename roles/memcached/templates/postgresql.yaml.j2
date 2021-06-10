@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: '{{ ansible_operator_meta.name }}-postgresql'
+  namespace: '{{ ansible_operator_meta.namespace }}'
+  labels:
+    name: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: postgresql
+  template:
+    metadata:
+      labels:
+        name: postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: registry.redhat.io/rhel8/postgresql-12:1
+          resources:
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command:
+                - /usr/libexec/check-container
+          livenessProbe:
+            exec:
+              command:
+                - /usr/libexec/check-container
+                - '--live'
+          env:
+            # - name: POSTGRESQL_USER
+            #   value: testuser
+            # - name: POSTGRESQL_PASSWORD
+            #   value: secret
+            # - name: POSTGRESQL_DATABASE
+            #   value: mydb
+            # - name: POSTGRESQL_USER
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: postgresql
+            #       key: username
+            # - name: POSTGRESQL_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: postgresql
+            #       key: password
+            # - name: POSTGRESQL_DATABASE
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: postgresql
+            #       key: database
+            - name: POSTGRESQL_ADMIN_PASSWORD
+              value: secret
+            # - name: POSTGRESQL_ADMIN_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: postgresql-admin
+            #       key: password
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - name: postgresql-data
+              mountPath: /var/lib/pgsql/data
+      volumes:
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: '{{ ansible_operator_meta.name }}-postgresql'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: 
+  name: '{{ ansible_operator_meta.name }}-postgresql'
+  namespace: '{{ ansible_operator_meta.namespace }}'
+  labels:
+    name: postgresql
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: '{{ ansible_operator_meta.name }}-postgresql'
+  namespace: '{{ ansible_operator_meta.namespace }}'
+  labels:
+      name: postgreslq
+spec:
+  type: ClusterIP
+  selector:
+    name: postgreslq
+  ports:
+  - name: postgres
+    port: 5432

@@ -3,6 +3,24 @@
   community.kubernetes.k8s:
     definition: "{{ lookup('template','memcached-deployment.yaml.j2') | from_yaml }}"
 
+- name: deploy postgresql
+  community.kubernetes.k8s:
+    definition: "{{ lookup('template','postgresql.yaml.j2') | from_yaml_all | list }}"
+
+# - name: create postgresql-pvc
+#   community.kubernetes.k8s:
+#     definition: "{{ lookup('template','postgresql/postgresql-pvc.yaml.j2') | from_yaml }}"
+
+# - name: create postgresql-deployment
+#   community.kubernetes.k8s:
+#     definition: "{{ lookup('template','postgresql/postgresql-deployment.yaml.j2') | from_yaml }}"
+
+
+# - name: create postgresql-service
+#   community.kubernetes.k8s:
+#     definition: "{{ lookup('template','postgresql/postgresql-service.yaml.j2') | from_yaml }}"
+
+
 - name: create configmap
   community.kubernetes.k8s:
     # definition: "{{ lookup('template','memcached-configmap.yaml.j2') | from_yaml }}"
