@@ -1,0 +1,94 @@
+# Run operator locally
+
+The operator code can be run locally, so we can save the time of building and deploying a container image. We must be logged in to a Kubernetes cluster and us run the following commands:
+
+* `export WATCH_NAMESPACE=mynamesapce`
+* `make run`
+   +
+   or
+   +
+  `ansible-runner run`
+
+Log level can be increased by:
+
+* `ansible-runner --debug run`
+* Or `ansible-runner -vvvvv run`
+
+[NOTE]
+In this case the operator is not using the permissions defined in the _Role_, but it operates with our permissions. This requires some safety (as _cluster-admins_) and can also cause some differencies in the functionality.
+
+
+## ansible-operator
+
+The `ansible-operator` tool must be installed to run the operator locally. See https://github.com/operator-framework/operator-sdk/releases.
+
+## Pipenv
+
+To run the Ansible role locally we also need certain ansible packages. The easiest is to use `pipenv` and maintain a `Pipfile`.
+
+See:
+
+* Pip: https://pip.pypa.io/en/stable/
+* Pipenv: https://pipenv.pypa.io/en/latest/
+
+```
+# Create virtual env from Pipfile. This creates Pipfile.lock. 
+pipenv install --dev
+
+# Activates the environment. Afterwards we can run the operator.
+pipenv shell
+```
+
+Additional commands:
+```
+# List current packages
+pip list
+
+# Add packaged temporarily to the environment
+pip install psycopg2-binary
+
+# Revert to whatever is in Pipfile
+pipenv clean
+
+# Add packages permanently to Pipfile
+pipenv install psycopg2-binary~=2.9
+```
+
+## Collections
+
+The Python collections required by our code must also be installed. 
+
+```
+# Install required collections
+ansible-galaxy collection install -r requirements.yml
+
+# List installed collections
+ansible-galaxy collection list
+```
+
+## Telepresence
+
+The operator mostly talks to the Kubernetes api and managed Kubernetes resources for a simple deployment. More complicated use cases usually require tasks to be executed against the managed application or database directly, that may not be accessible from outside the cluster. 
+
+Manually we can use "kubectl port-forward" in such cases, but that is not easy when we want our locally running operator to access those endpoints. Telepresence (https://www.telepresence.io/) is a tool that can be really useful for such cases.
+
+```
+# Enable Telepresence
+telepresence connect
+
+# At this point K8s services are accessible via DNS name "<service name>.<namespace>"
+
+# (Optional) Start local intercept to make DNS name "<service name>" within the namespace work
+telepresence intercept --local-only --namespace <namesapce>  any-custom-name
+
+# Run operator
+ansible-runner run
+
+# (Optional) Stop local intercept
+telepresence leave any-custom-name
+
+# Disable Telepresence
+telepresence quit
+```
+
+When Telepresence is enabled, our code can act just like running within the cluster and it can access the internal K8s services. After `telepresence connect` only `<service name>.<namespace>` names work, but after `telepresence intercept --local-only ...` the short service names can be used too.

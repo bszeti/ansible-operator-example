@@ -1,7 +1,5 @@
 # Example Ansible Operator
 
-
-
 ## Templating 
 
 ### Manifest templates in files
