@@ -1,0 +1,82 @@
+# Project stucture and Makefile
+
+## Init Project
+
+Basic deployment:
+```
+# Init project
+operator-sdk init --domain bszeti.github.com --plugins ansible
+operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role
+
+# Build and push image
+make docker-build docker-push IMG="quay.io/bszeti/memcached-operator:v0.0.1"
+
+# Deploy operator to the cluster
+make deploy IMG="quay.io/bszeti/memcached-operator:v0.0.1"
+
+# Create a CR
+kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
+
+# Watch operator log
+oc logs -f -l control-plane=controller-manager -c manager
+
+# Undeploy operator
+make undeploy
+```
+
+### Resources created:
+
+`oc kustomize config/default`
+
+* namespace/bszeti-operator-system
+* customresourcedefinition.apiextensions.k8s.io/memcacheds.cache.bszeti.github.com
+* serviceaccount/bszeti-operator-controller-manager
+* role.rbac.authorization.k8s.io/bszeti-operator-leader-election-role
+* clusterrole.rbac.authorization.k8s.io/bszeti-operator-manager-role
+* rolebinding.rbac.authorization.k8s.io/bszeti-operator-leader-election-rolebinding
+* clusterrolebinding.rbac.authorization.k8s.io/bszeti-operator-manager-rolebinding
+* configmap/bszeti-operator-manager-config
+* deployment.apps/bszeti-operator-controller-manager
+
+## Kustomize
+
+_Kustomize_ tool is required by the `Makefile` scripts. If the `kustomize` binary is not available on the path, the `Makefile` will try to download the binary (to `./bin/kustomize`). Some commands and parameters seem to be picky about Kustomize version number, so use the same version that the script downloads or update the commands to your Kustomize version.
+
+[NOTE]
+Make sure you understand the project structure, the `Makefile` and the role of `kustomization.yaml` files. The default logic probably needs to be customized to the current project's and environment's needs.
+
+
+## Deployment Namespace
+
+The default generated deployment creates a new namespace when `make deploy` is run and deletes it during `make undeploy`,
+
+### Deploy in a new namespace
+
+To change the namespace name:
+
+* `config/default/kustomization.yaml`: Set `namespace` - should start with `namePrefix` to create a new Namespace correctly.
+* `config/default/kustomization.yaml`: Set `namePrefix` to anyting. This prefix is added to the created resource names.
+
+### Deploy in existing namespace
+
+Probably you don't want to recreate namespace everytime, especially if the operator requires some other resources (pull secrets, tls secrets, ...):
+
+* `config/manager/manager.yaml`: Remove `Namespace`
+* `config/default/kustomization.yaml`: Set `namespace` to existing namespace
+* `config/default/kustomization.yaml`: Set `namePrefix` to anyting
+
+[NOTE]
+By default a `ClusterRole` is created for the operator and all namespaces are monitored, so have only one operator deployment in the cluster.
+
+
+## Image url
+
+Make commands require IMG parameter poiting to the operator's url. To set default:
+* `Makefile`: Set `IMAGE_TAG_BASE` and `VERSION`
+* `Makefile`: Change `IMG ?= $(IMAGE_TAG_BASE):$(VERSION)`
+
+Then simply `make docker-build docker-push` and `make deploy` can be used.
+
+[NOTE]
+Add `imagePullPolicy: Always` in `config/manager/manager.yaml` to avoid caching, if version is not `latest`.
+

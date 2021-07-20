@@ -1,0 +1,65 @@
+# Mulit-tenant development
+
+By default the generated project assumes that every developer has their own cluster. In a real-world project this may not be the case and several developers - working on the same operator - use the same cluster. Several modifications are recommend to make this possible and minimaze the interference between developers. The goal is to use namespaces resource instead of cluster scoped resources as much as possible.
+
+## Image url
+
+To use different image url (per develper or per git branch) a custom IMG parameter should be passed for the `make` commands (e.g. `make docker-build docker-push IMG="quay.io/bszeti/my-operator:v0.0.1"`). The IMG can also be set simply as environment variable.
+
+[NOTE]
+====
+If OpenShift internal registry is used to store the images, the external Route url (`default-route-openshift-image-registry.mycluster.cloud/my-operator-images/my-operator:latest`) is required for `make docker-push`, but the internal image url (`image-registry.openshift-image-registry.svc:5000/my-operator-images/my-operator:latest:latest`) is required for the deployment. This means handling the IMG parameter is more complcated than a simple env var.
+====
+
+## Deployment namespace
+
+It should be easy to set the deployment namespace preferably through a parameter or environment variable. As Kustomize doesn't support env vars, a simple solution is to modify the `Makefile`:
+
+* Set env var `OPERATOR_NAMESPACE` (e.g. `export OPERATOR_NAMESPACE=my-namespace`)
+* Optionally have a default value in `Makefile`:
++
+`OPERATOR_NAMESPACE ?= operator-namesapce`
+* Add to `deploy` task:
++
+`cd config/default && $(KUSTOMIZE) edit set namespace ${OPERATOR_NAMESPACE}`
+
+The `make` commands update the `kustomization.yaml` files regularly, which is annoying in a project with multiple developers using different namespaces and image urls. A simple solution is to add these files to `.gitignore`:
+
+* config/default/kustomization.yaml
+* config/manager/kustomization.yaml
+* config/testing/kustomization.yaml
+
+## Namespaced resources
+
+To avoid conflicts caused by multiple versions of the operator being deployed on the same cluster, we should use namespace scoped resources - instead of cluster scoped - as much as possible. 
+
+By default the generated project contains a `ClusterRole` and a `ClusterRoleBinding`. For development we can create a matching namespaced `Role` and `RoleBinding` (see `config/rbac/role*.yaml`) and use these instead. For a deployment when the operator monitors all namespaces, the cluster scoped versions of the RBAC files are required of course.
+
+The `CustomResourceDefinitions` belonging to the operator still causes problems as those are cluster scoped resources. Maintaining a developer - or branch - specific `CustomResourceDefinition` version is too confusing, so the team should still coordiante to minimaze the impact. Kubernetes silently drops the fields not specified in a resource's CRD, which can cause issues in a multi-tenant environment when we practically need different versions of the CRs on the same cluster, but we don't want to maintain individual CRD versions. Some options to mitage the problem:
+
+* At the begining we can just use the generated CRD with only a `spec` and `status` having `x-kubernetes-preserve-unknown-fields: true`, which means we can specify any fields in our CR without being dropped. 
+* This flag is unfortunately not inherited by children properties, so as soon as we start adding fields we increase the risk of causing issues. We can add `x-kubernetes-preserve-unknown-fields: true` everywhere temporarily, but in this case we ignore schema validation and obviously we don't want to leave this flag there forever. It makes sense the leave this flag for "areas of the CRD" that are still work-in-progress, but not for fields that probably won't change anymore.
+* The CR schema enforcment only happens when the resource is created or modified. If we make sure that our version of the CRD is reapplied just before we create a CR, the risk of "disappearing fields" is low.
+
+Another issue cause by the CRD is that all CRs are automatically deleted from the cluster when the CRD is deleted. My default the `make undeploy` and `molecule test` tasks delete the CRD which is obviously annoying in a multy tenant environment. It's recommended to never delete the CRD from the cluster during these tasks:
+
+* Create a separate kustomize directory that includes the CRD files at `config/default-with-crd` and remove the `../crd` from `config/default`
+* In `make deploy` use the `config/default-with-crd`, in `make undeploy` use the `config/default` as by default.
+* To keep the CRD after `molecule test`, it's easier to add a line in `molecule/default/kustomize.yml` to skip deleting the CRD:
++
+`when: not (item.kind == 'CustomResourceDefinition' and state == 'absent')`
+
+## Watch self namespace only
+
+By default the operator monitors all namespaces. The Deployment can be changed to operate within the self namespace only:
+
+* `config/rbac/kustomization.yaml`: Use _Role_ (`config/rbac/role*.yaml`) instead of _ClusterRole_ (`config/rbac/clusterrole*.yaml`)
+* `config/manager/manager.yaml` Add _WATCH_NAMESPACE_ env var for operator Deployment:
++
+```
+env:
+  - name: WATCH_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+```
