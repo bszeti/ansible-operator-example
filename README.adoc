@@ -10,7 +10,6 @@ make deploy IMG="quay.io/bszeti/memcached-operator:v0.0.1"
 kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
 
 make undeploy
-
 ```
 
 ## Resources created:
@@ -45,6 +44,10 @@ The default generated deployment creates a new namespace when `make deploy` is r
 [NOTE]
 By default a `ClusterRole` is created for the operator and all namespaces are monitored, so have only one operator deployment in the cluster.
 
+Watch controller logs:
+
+  oc logs -f -l control-plane=controller-manager -c manager
+
 ## Notes
 
 ### Set image url
@@ -72,20 +75,28 @@ env:
         fieldPath: metadata.namespace
 ```
 
+## Templating 
 
-## Manifest templates in files
+### Manifest templates in files
 
 Must use _lookup_:
-`definition: "{{ lookup('template','file-name.yaml.j2') | from_yaml }}"`
+
+  definition: "{{ lookup('template','file-name.yaml.j2') | from_yaml }}"
+
+For a template with multiple manifests:
+
+  definition: "{{ lookup('template','file-name.yaml.j2') | from_yaml_all | list }}"
 
 Path searched for file:
 ```
-operator-root/roles/memcached/templates/file-name.yaml.j2
-operator-root/roles/memcached/file-name.yaml.j2
-operator-root/roles/memcached/tasks/templates/file-name.yaml.j2
-operator-root/roles/memcached/tasks/file-name.yaml.j2
+/roles/memcached/templates/file-name.yaml.j2
+/roles/memcached/file-name.yaml.j2
+/roles/memcached/tasks/templates/file-name.yaml.j2
+/roles/memcached/tasks/file-name.yaml.j2
 ```
 
+[NOTE]
+====
 Doesn't work without lookup. Tried:
 
 * `src: 'templates/file-name.yaml.j2'`
@@ -95,7 +106,27 @@ Doesn't use it as Jinja template
 * `template: 'templates/file-name.yaml.j2'`
 +
 Works only in local run, not in container.
+====
 
+For Debugging use:
+```
+- name: show templating yaml string
+  debug:
+    msg: "{{ lookup('template','file-name.yaml.j2') }}"
+- name: show templating json
+  debug:
+    msg: "{{ lookup('template','file-name.yaml.j2') | from_yaml }}"
+```
+
+### Jinja blocks
+
+Removing new line after block (_trim_blocks_) is enabled by default. To keep the identation of yaml files with Jinja blocks, we have too options:
+
+* Start every `{%` at the beginning of the line, so we have no whitespaces added
+* Add `#jinja2: lstrip_blocks: True` to the top of the file.
+
+[NOTE]
+Using `{%-` doesn't work as it removes the previous line break too and we end up with no line breaks between lines.
 
 ## Molecule tests
 
@@ -110,6 +141,7 @@ For the generated `default` molecule test:
 Run test:
 ```
 mulecule converge
+molecule verify
 molecule destroy
 # or
 molecule test
@@ -143,45 +175,13 @@ Local testing can be performed with a temporary Kubernets cluster using https://
 Run ansible-operator locally:
 ```
 export WATCH_NAMESPACE=bszeti
-ansible-operator run 2>&1 | grep '^{' | jq  .
+ansible-operator run --ansible-verbosity 7 2>&1 | grep '^{' | jq  .
 # or 
 make run 2>&1 | grep '^{' | jq  .
 ```
 
 [NOTE]
 On Mac, socket files are left behind causing unnecessary error logs. Add delete step to `run` command: `rm $(wildcard /tmp/ansibleoperator-*) 2>/dev/null || true`
-
-## PostgreSQL database
-
-Image: docker hub postgres:11
-Image: registry.redhat.io/rhel8/postgresql-12:1
-Env vars:
- - POSTGRESQL_USER=dbuser
- - POSTGRESQL_PASSWORD=secret
- - POSTGRESQL_DATABASE=db
- - POSTGRESQL_ADMIN_PASSWORD
-resources:
-volume: /var/lib/pgsql/data
-size: 
-
-Secret: [postgresql-]
-apiVersion: v1
-kind: Secret
-  metadata:
-    labels:
-      pg-cluster: ${your-cluster-name}
-    name: ${your-cluster-name}-${your-custom-user}-secret
-type: Opaque
-stringData:
-  username: ${your-custom-user}
-  password: SECRET
-
-Certificate-Based Authentication?
-
-Common labels for all resources.
-
-- name: POSTGRESQL_DATABASE
-            #   value
 
 ## TODO
 
@@ -191,3 +191,11 @@ CRITICAL Idempotence test failed because of the following tasks:
 *  => (item={'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'labels': {'control-plane': 'controller-manager'}, 'name': 'osdk-controller-manager', 'namespace': 'my-osdk-test'}, 'spec': {'replicas': 1, 'selector': {'matchLabels': {'control-plane': 'controller-manager'}}, 'template': {'metadata': {'labels': {'control-plane': 'controller-manager'}}, 'spec': {'containers': [{'args': ['--secure-listen-address=0.0.0.0:8443', '--upstream=http://127.0.0.1:8080/', '--logtostderr=true', '--v=10'], 'image': 'gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0', 'name': 'kube-rbac-proxy', 'ports': [{'containerPort': 8443, 'name': 'https'}]}, {'args': ['--health-probe-bind-address=:6789', '--metrics-bind-address=127.0.0.1:8080', '--leader-elect', '--leader-election-id=memcached-operator'], 'env': [{'name': 'ANSIBLE_GATHERING', 'value': 'explicit'}, {'name': 'WATCH_NAMESPACE', 'valueFrom': {'fieldRef': {'fieldPath': 'metadata.namespace'}}}], 'image': 'quay.io/bszeti/memcached-operator:v0.0.1', 'imagePullPolicy': 'Always', 'livenessProbe': {'httpGet': {'path': '/healthz', 'port': 6789}, 'initialDelaySeconds': 15, 'periodSeconds': 20}, 'name': 'manager', 'readinessProbe': {'httpGet': {'path': '/readyz', 'port': 6789}, 'initialDelaySeconds': 5, 'periodSeconds': 10}, 'securityContext': {'allowPrivilegeEscalation': False}}] => Set resources to present
 WARNING  An error occurred during the test sequence action: 'idempotence'. Cleaning up.
 ```
+
+https://stackoverflow.com/questions/45428447/how-to-disable-molecule-idempotence-check-on-ansible-role-test
+
+*yamllint template errors*
+
+`yamllint` shows errors due to j2 syntax. We need to skip scheking either by renaming files to `*.yaml.j2` or excluding path by adding `ignore: '**/templates/**'` in `molecule/default/molecule.yml`.
+
+https://github.com/adrienverge/yamllint/issues/69

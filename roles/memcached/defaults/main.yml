@@ -3,6 +3,6 @@
 size: 1
 foo: default message
 postgresql:
-  createInstance: True
+  createInstance: False
   adminSecret:
     name: postgresql-postgres-secret

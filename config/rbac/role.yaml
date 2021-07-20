@@ -16,6 +16,7 @@ rules:
       - pods/exec
       - pods/log
       - persistentvolumeclaims
+      - services
     verbs:
       - create
       - delete
@@ -28,9 +29,9 @@ rules:
       - apps
     resources:
       - deployments
-      - daemonsets
-      - replicasets
-      - statefulsets
+      # - daemonsets
+      # - replicasets
+      # - statefulsets
     verbs:
       - create
       - delete
