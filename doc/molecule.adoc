@@ -1,0 +1,67 @@
+# Molecule testing
+
+Docs: 
+
+* Molecule https://molecule.readthedocs.io/en/latest/index.html
+* Operator SDK: https://sdk.operatorframework.io/docs/building-operators/ansible/testing-guide/
+
+Scenarios:
+
+* `default`: Run tests on the currently logged in Kubernetes cluster. The operator image must be pushed into a registry. We focus in this scenario.
+* `kind`: Run tests in a one node vanilla Kubernetes started by _kind_. The operator image is loaded from local docker.
+
+Simple run `molecule test` runs tests in a recreated namespace (`$TEST_OPERATOR_NAMESPACE` default to `osdk-test`). Namespace is destroyed before and after the test (which can be annoying). Molecule has certain stages for execution that can be run individually (similary to Maven). The current stage is saved (`Reset` -> `Created` -> `Converged`) in temporary folders, so we don't have to start from scratch every time. See `molecule list` for current state.
+
+Command `test` executes a whole cycle, but during development you rather want to execute one-by-one (a whole `molecule test` takes a lot of time). 
+
+* `molecule create`: Reach _Created_ state. Plays `create.yml` and `prepare.yml`, that updates `config/testing/kustomization.yaml` with our test namespace set in `molecule.yml`. 
+* `molecule converge`: Reach _Converged_ state. Plays `destroy.yml`, `converge.yml` and `kustoize.yml`. (Re)Creates test namespace and deploys the operator.
+* `molecule verify`: Plays `verify.yml`. Runs all test files from `tasks/*_test.yml`. 
+* `molecule destroy`: Remove deployment and test namespace.
+
+_Verify_ runs the tests that are regular Ansible scripts usually with `k8s` steps creating the CR and `assert` steps to verify certain conditions. Check `wait_condition` that waits until the CR reaches a `Running` state which means the operator is done with the reconciliation loop.
+
+[NOTE]
+====
+The whole `molecule` directory is practically a bunch of Ansible scripts. Make sure to understand how they work and customize them to your own project's needs. See some ideas below.
+====
+
+## Select tests to run
+
+Running all the tests can take long. During developing a new feature we usually only want to run specific tests (then all at the end). Edit included task files in `molecule/default/molecule.yml` or introduce an env var like:
+```
+- name: Import all test files
+  include_tasks: '{{ item }}'
+  with_fileglob:
+    - "{{ lookup('env','TEST_TASKS') | default('tasks/*_test.yml',True) }}"
+```
+
+## yamlint
+
+Any `error` detected by `yamlint` stops test execution. Also it generates a lot of unnecessary warnings about Jinja templates. Try to customize the rules or remove `lint` completely in `molecule/default/molecule.yml`
+
+## Multi-tenant testing
+
+Developers should use their own test namespace and built operator image to run tests. Fortunately these can easily be set by the `TEST_OPERATOR_NAMESPACE` and `OPERATOR_IMAGE` env vars. (Note: molecule is not run through `make` so the `IMG` env var is not used by default - but the `molecule.yml` file can easily be updated accordingly).
+
+If we used a shared cluster, it's important not to delete the CRD during `molecule destroy`, because it deletes all the CRs on the cluster. Add a line in `molecule/default/kustomize.yml` to skip the CRD during delete phase: 
+
+  when: not (item.kind == 'CustomResourceDefinition' and state == 'absent')
+
+## Verbose output
+
+The `verify.yml` prints a lot of output in case of an error.
+
+* JSON of resources (Deployment, Pod, Secret, ConfigMap) in the namespace. It's suggested to limit this list, especially Secrets can be long becaus of all the ServiceAccount secrets. Or simply remove "Output gathered resources" step.
+* The operator Pod's log. Can be disabled by removing "Retrieve Pod logs" and "Output gathered logs" steps.
+
+This information can be useful in a CI/CD process, but it's too much during manual execution.
+
+## Test CRs
+
+By default the generated `molecule/default/tasks/mykind_test.yml` creates a CR during test execution using the sample in `config/samples/cache_v1alpha1_mykind.yaml`. Samples are useful for developers and users, but it's better to have dedicated test CR files instead. Especially that these files may need some simple templating. For example using `{{namespace}}` in the hostname of a Route or Ingress.
+
+## Prepare test namespace
+
+Sometimes the test namespace needs some preparation (for example a pull secret linked to a ServiceAccount) before the operator can be deployed. The best place is probably in `molecule/default/converge.yml` after creating the namespace.
+

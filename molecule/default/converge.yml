@@ -13,6 +13,9 @@
         kind: Namespace
         name: '{{ namespace }}'
 
+    # Prepare the test namespace here. (E.g. create pull secrets)
+    # - ...
+
     - import_tasks: kustomize.yml
       vars:
         state: present

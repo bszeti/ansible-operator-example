@@ -11,10 +11,10 @@
 
   tasks:
     - block:
-        - name: Import all test files from tasks/
+        - name: Import all test files
           include_tasks: '{{ item }}'
           with_fileglob:
-            - tasks/*_test.yml
+            - "{{ lookup('env','TEST_TASKS') | default('tasks/*_test.yml',True) }}"
       rescue:
         - name: Retrieve relevant resources
           k8s_info:

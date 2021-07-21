@@ -5,6 +5,7 @@
 Basic deployment:
 ```
 # Init project
+mkdir my-operator && cd my-operator
 operator-sdk init --domain bszeti.github.com --plugins ansible
 operator-sdk create api --group cache --version v1alpha1 --kind Memcached --generate-role
 
