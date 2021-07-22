@@ -23,8 +23,14 @@ _Verify_ runs the tests that are regular Ansible scripts usually with `k8s` step
 
 [NOTE]
 ====
+Molecule seems to require `yml` extension (instead of `yaml`), which is confusing if we use `yaml` everywhere else in the projects.
+====
+
+[NOTE]
+====
 The whole `molecule` directory is practically a bunch of Ansible scripts. Make sure to understand how they work and customize them to your own project's needs. See some ideas below.
 ====
+
 
 ## Select tests to run
 

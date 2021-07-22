@@ -11,7 +11,7 @@
       reason: Successful
       status: "True"
   vars:
-    cr_file: 'memcached_2_test_cr.yaml'
+    cr_file: 'memcached_2_test_cr.yml'
 
 - name: Debug CM
   debug: var=cm

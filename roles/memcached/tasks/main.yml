@@ -1,9 +1,13 @@
 ---
+- name: all vars
+  debug: 
+   msg: "{{ vars }}"
+
 - name: start memcached
   community.kubernetes.k8s:
     definition: "{{ lookup('template','memcached-deployment.yaml.j2') | from_yaml }}"
 
-- name: create postgresql admin secret
+- name: create  secret
   community.kubernetes.k8s:
     definition: "{{ lookup('template','postgresql-admin-secret.yaml.j2') | from_yaml }}"
   # when: postgresql.createInstance 

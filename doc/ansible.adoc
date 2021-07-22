@@ -1,0 +1,102 @@
+# Ansible in an Operator
+
+The Ansible based operator framework provides a reconciliation loop that runs a role (or a playbook) when an instance of our Kubernetes Custom Resource (CR) - like `config/samples/cache_v1alpha1_memcached.yaml` - is created or updated. We can have one or more Custom Resource Definitions (CRD), the mapping which role to play for which CRD is in `watches.yaml`.
+
+All the Kubernetes API calls go through an http proxy which is part of the `ansible-runner` (the core of the whole operator) that injects `ownerReferences` pointing to the original CR when the resource is created. This indicates that the "dependant" resource belongs to the "parent" resource (see https://sdk.operatorframework.io/docs/building-operators/ansible/reference/dependent-watches/), which is important for two purposes:
+
+* The reconciliation loop (for the whole CR) is also called automatically if any of the dependant resources are changed or deleted.
+* The dependant resources are automatically deleted by Kubernetes when the parent resource is removed.
+
+The Operator automatically subscribes to watch all Kubernetes types (`kind`) in the namespace that are created by the reconciliation loop. When the Operator Pod starts, it watches only our CRD (set in `watches.yaml`), but it runs the reconciliation loop once to every CR currently existing, so eventually it watches all the dependency types.
+
+[NOTE]
+====
+The reconciliation loop is not started by default in case of a delete operation, but such behavior can be achieved by using a Kubernetes finalizer.
+====
+
+
+## RBAC
+
+An Operator is practically a Pod making Kubernetes API (and maybe other) calls running under it's own ServiceAccount. This ServiceAccount needs to have the right permissions to `create`/`delete`/`get`/`list`/`patch`/`update`/`watch` the Kubernetes resources it needs to manage. Make sure you always have these permissions set in `config/rbac/role.yaml` (which is a `Role` for namespace-scoped or a `CustomRole` for cluster-scoped operators).
+
+For example if you want to manage OpenShift Routes you need to add something like this:
+```
+- apiGroups:
+    - route.openshift.io
+  resources:
+    - routes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+```
+
+## CRD
+
+We must specify the CustomResourceDefinitions (CRDs) under `config/crd/bases`. This file should specify the full OpenAPI schema of our Custom Resources so basic Kubernetes validation can be applied when the CR is created. At the beginning a simple CRD with only `spec` and `status` fields are generated. Because of the `x-kubernetes-preserve-unknown-fields: true` flag the schema validation is ignored and we can use any properties in our Custom Resource. This is ideal at the beginning when we start the development, but at some point we should specifiy the fields and completely remove this flag. Without this flag set Kubernetes will silently drop the unknown propertied when a CR is created, which is annoying when we make a simple indentation mistake in our test CR...
+
+[NOTE]
+====
+The `x-kubernetes-preserve-unknown-fields: true` flag is not inherited by the sub-properties, but must be set one-by-one if needed.
+====
+
+See some CR examples:
+
+* https://github.com/3scale/3scale-operator/blob/master/config/crd/bases/apps.3scale.net_apimanagers.yaml
+* https://github.com/elastic/cloud-on-k8s/blob/master/deploy/eck-operator/charts/eck-operator-crds/templates/all-crds.yaml
+
+The `x-kubernetes-int-or-string: true` flag is useful for fields when the value can be a string or just numbers (e.g. image tag). This matters for string fields where we usually skip quotes, as `myfield: 123` in yaml is an `int`, and is rejected as `string` type. With this flag we don't have to do `myfield: "123"`.
+
+[NOTE]
+====
+I haven't found a good GUI editor (something like https://www.apicur.io/ for APIs) for CRDs. Please leave a comment if you know one!
+====
+
+## Ansible Variables
+
+The reconciliation code is played with a couple of variables set by the framework based on the Custom Resource:
+
+* name of the CR: `ansible_operator_meta.name`
+* namespace of the CR: `ansible_operator_meta.namespace`
+* First level fields one-by-one from the CR's `spec` section
+* Full CR (rarely needed): `_cache_bszeti_github_com_memcached`
+
+All the vars can be logged by:
+```
+- name: all vars
+  debug: 
+   msg: "{{ vars }}"
+```
+
+See https://sdk.operatorframework.io/docs/building-operators/ansible/development-tips/#extra-vars-sent-to-ansible
+
+
+## Default values
+
+The reconciliation loop plays a role (or a playbook) when a received (watched) Kubernetes event indicates a change related to our Custom Resource. The variables set for the role are coming from the CR instance's `spec` section. Default values can be set for the role in `roles/memcached/defaults/main.yml`.
+
+Unfortunately Ansible doesn't support a "tree merge", but it completely overwrites the field's default values if that field is defined in the CR under `spec`. For example if we have `resources` defaults like:
+
+```
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 2
+    memory: 512Mi
+```
+And then partially set in the CR:
+```
+spec:
+  resources:
+    requests:
+      cpu: 200m
+```
+Only the `resources.requests.cpu` value is kept.
+
+TODO: solution
