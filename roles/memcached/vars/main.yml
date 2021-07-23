@@ -1,2 +1,11 @@
 ---
 # vars file for Memcached
+values:
+  replicas:  "{{ default_values.replicas | combine(replicas | default({}), recursive=True) }}"
+  foo:       "{{ default_values.foo | combine(foo | default({}), recursive=True) }}"
+  resources: "{{ default_values.resources | combine(resources | default({}), recursive=True) }}"
+  database:  "{{ default_values.database | combine(database | default({}), recursive=True) }}"
+
+common_labels:
+  instance_name: "{{ ansible_operator_meta.name }}"
+  mylabel: "hello"

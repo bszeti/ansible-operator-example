@@ -1,8 +1,16 @@
 ---
 # defaults file for Memcached
-size: 1
-foo: default message
-postgresql:
-  createInstance: False
-  adminSecret:
-    name: postgresql-postgres-secret
+default_values:
+  replicas: 1
+  foo: default message
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 2
+      memory: 512Mi
+  database:
+    create_instance: False
+    admin_secret:
+      name: postgresql-postgres-secret

@@ -99,4 +99,28 @@ spec:
 ```
 Only the `resources.requests.cpu` value is kept.
 
-TODO: solution
+We need to use `combine` to achieve the expectes merge of defaults and values coming from CR:
+
+In `roles/memcached/defaults/main.yml` have the default values under a parent field (e.g. `default_values`):
+```
+default_values:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 2
+      memory: 512Mi
+```
+
+In `roles/memcached/vars/main.yml` have the combine expressions for each main field:
+```
+values:
+  replicas:  "{{ default_values.replicas  | combine(replicas  | default({}), recursive=True) }}"
+  resources: "{{ default_values.resources | combine(resources | default({}), recursive=True) }}"
+  ...
+```
+
+Then in the ansible scripts use `values` variable as `{{ values.resources.requests.cpu }}` that will contain the merged values as expected. One caveat is that in this case fields with default values can not be deleted and to be undefined, but that's rarely needed. Also we can still use the `resources` or `default_values.resources` is we strictly want to access the default or the CR values instead of the merged `values.resources`. For a more complex solution that resolves that problem with a filter plugin see: https://github.com/infrawatch/service-telemetry-operator/blob/master/roles/servicetelemetry/vars/main.yml
+

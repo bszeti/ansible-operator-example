@@ -1,2 +1,222 @@
 # Coding in yaml
 
+Use Ansible's `kubernetes.core.k8s` module (used to be called `community.kubernetes.k8s`) to create and modify k8s resources. There are also other useful modules (also for _Helm charts_) in the collection `kubernetes.core`.
+
+See:
+
+* https://docs.ansible.com/ansible/latest/collections/kubernetes/core/k8s_module.html
+* https://galaxy.ansible.com/kubernetes/core
+* https://github.com/ansible-collections/kubernetes.core
+
+
+## Create Resource
+
+For example we can create a secret like:
+
+```
+- name: create secret 
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: "{{ ansible_operator_meta.name }}-myuser"
+        namespace: "{{ ansible_operator_meta.namespace }}"
+        labels:
+          {{ common_labels | to_nice_yaml | indent(10) }}
+      stringData:
+        username: myuser
+        password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits,punctuation length=20') }}"
+  when: not lookup('k8s',kind='Secret', namespace=ansible_operator_meta.namespace, resource_name=ansible_operator_meta.name+'-myuser')
+  no_log: True
+```
+
+Use `no_log: True` only for resources with sensitive information to avoid generated secret being logged. A ceveat is that logs are also hidden in case of errors.
+
+
+## Use a template file
+
+The Kubernetes resource template can be put in a file instead of inline. For example `roles/memcached/templates/memcached-configmap.yaml.j2`
+```
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: "{{ ansible_operator_meta.name }}-configmap"
+  namespace: "{{ ansible_operator_meta.namespace }}"
+data:
+  foo: "{{ values.foo }}"
+```
+
+And used in the task file:
+
+```
+- name: create configmap
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template','memcached-configmap.yaml.j2') | from_yaml }}"
+```
+
+For a yaml template with multiple manifests (separated by `---`):
+
+  definition: "{{ lookup('template','file-name.yaml') | from_yaml_all | list }}"
+
+Paths searched for the file:
+```
+/roles/memcached/templates/file-name.yaml
+/roles/memcached/file-name.yaml
+/roles/memcached/tasks/templates/file-name.yaml.
+/roles/memcached/tasks/file-name.yaml
+```
+
+[NOTE]
+====
+We need to use `lookup`. Tried:
+
+* `src: 'templates/file-name.yaml'`
++
+Doesn't use it as Jinja template
+
+* `template: 'templates/file-name.yaml'`
++
+Works only in local run, not in container.
+====
+
+For debugging it's often needed to print the generated template files.
+
+```
+- name: show templating yaml string - to check indentation errors
+  debug:
+    msg: "{{ lookup('template','file-name.yaml.j2') }}"
+- name: show templating json - better to reaad
+  debug:
+    msg: "{{ lookup('template','file-name.yaml.j2') | from_yaml }}"
+
+# If we want to stop task execution
+- name: stop
+  meta: end_host
+```
+
+## Lookup k8s
+
+Here we create a PostgreSQL user using admin and user credentials stored in Secrets with their names set in the CR `database.admin_secret_name` and `database.user_secret_name` fields.
+
+```
+- name: database user
+  community.postgresql.postgresql_user:
+    db: mydb
+    login_host: "{{ values.database.host }}"
+    login_port: "{{ values.database.port }}"
+    login_password: "{{ admin_secret.data.password | b64decode }}"
+    login_user: "{{ admin_secret.data.username | b64decode }}"
+    name: "{{ user_secret.data.username | b64decode }}"
+    password: "{{ user_secret.data.password | b64decode }}"
+    priv: ALL
+    expires: infinity
+  vars:
+    user_secret: "{{ lookup('kubernetes.core.k8s', api_version='v1', kind='Secret', namespace=ansible_operator_meta.namespace, resource_name=values.database.user_secret_name) }}"
+    admin_secret: "{{ lookup('kubernetes.core.k8s', api_version='v1', kind='Secret', namespace=ansible_operator_meta.namespace, resource_name=values.database.admin_secret_name) }}"
+
+```
+
+See https://github.com/ansible-collections/kubernetes.core/blob/main/docs/kubernetes.core.k8s_lookup.rst
+
+## Wait
+
+The `k8s` step can wait for deployments to be ready. Implemented for creating `Deployment`, `DaemonSet` and `Pod`, and for deletion for all kinds.
+
+```
+- name: Create deployment
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template','deployment.yaml') | from_yaml }}"
+    wait: yes
+    wait_timeout: 60
+    wait_condition:
+      type: Available
+      status: "True"
+```
+
+[NOTE]
+====
+Wait is not implemented for `StatefulSet`, that resource has no `status.conditions`.
+====
+
+Helm charts also have wait:
+```
+- name: Deploy Helm chart from local path
+  kubernetes.core.helm:
+    name: "{{ ansible_operator_meta.name }}"
+    release_namespace: "{{ ansible_operator_meta.namespace }}"
+    chart_ref: "{{ role_path }}/charts/mychart"
+    values: "{{ lookup('template', 'myvalues.yaml') | from_yaml }}"
+    wait: True
+```
+
+## Blocks and Loops
+
+Loops can be done in Ansible like this:
+
+```
+- name: looped task
+  debug:
+    msg: "Hello {{ item }}!"
+  loop: [Alice,Bob]
+```
+
+Blocks look like this:
+```
+- block:
+  - name: print hello
+    debug:
+      msg: "Hello!"
+  - name: print message
+    debug:
+      msg: "{{ mymessage }}"
+  when: values.block.enabled
+  vars:
+    mymessage: "I'm in a block!"
+```
+
+Unfortuantely loops can't be used for blocks, so a `loop` can't have multiple steps. The workaround is to put the steps in a separate file and call it in `include_tasks`. The variable `item` can be used in the included tasks.
+
+```
+# include.yaml:
+- name: print hello world
+  debug:
+    msg: "Hello World!"
+- name: print message
+  debug:
+    msg: "Hello {{ item }}!"
+
+# Main task
+- name: loop with multiple steps
+  include_tasks: include.yaml
+  loop: [Alice,Bob]
+```
+
+
+## Determine Kubernetes distro
+
+If we need some Kubernetes variant specific code we should determine the Kubernetes distibution we run on. For example to use `Route` on OpenShift intead of `Ingress`.
+
+```
+- name: Get Cluster information
+  kubernetes.core.k8s_cluster_info:
+  register: api_status
+- name: Set default k8 type
+  set_fact:
+    k8s_type: 'kubernetes'
+- name: Is this Openshift?
+  set_fact:
+    k8s_type: 'openshift'
+  when: api_status.apis['config.openshift.io'] is defined
+```
+
+## Jinja blocks
+
+Removing new line after block (_trim_blocks_) is enabled by default. To keep the identation of yaml files with Jinja blocks, we have too options:
+
+* Start every `{%` at the beginning of the line, so we have no whitespaces added
+* Add `#jinja2: lstrip_blocks: True` to the top of the file.
+
+[NOTE]
+Using `{%-` doesn't work as it removes the previous line break too and we end up with no line breaks between lines.

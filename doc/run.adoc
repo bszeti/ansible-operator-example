@@ -7,12 +7,12 @@ The operator code can be run locally, so we can save the time of building and de
    +
    or
    +
-  `ansible-runner run`
+  `ansible-operator run`
 
 Log level can be increased by:
 
-* `ansible-runner --debug run`
-* Or `ansible-runner -vvvvv run`
+* Go log level: `ansible-operator --debug run` or `ansible-operator --zap-log-level 5 run`
+* Ansible log level: `ansible-operator run --ansible-verbosity 7`
 
 [NOTE]
 In this case the operator is not using the permissions defined in the _Role_, but it operates with our permissions. This requires some safety (as _cluster-admins_) and can also cause some differencies in the functionality.
@@ -21,6 +21,9 @@ In this case the operator is not using the permissions defined in the _Role_, bu
 ## ansible-operator
 
 The `ansible-operator` tool must be installed to run the operator locally. See https://github.com/operator-framework/operator-sdk/releases.
+
+[NOTE]
+On Mac, socket files are left behind causing unnecessary error logs. Add delete step to `run` command: `rm $(wildcard /tmp/ansibleoperator-*) 2>/dev/null || true`
 
 ## Pipenv
 

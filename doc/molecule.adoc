@@ -31,6 +31,24 @@ Molecule seems to require `yml` extension (instead of `yaml`), which is confusin
 The whole `molecule` directory is practically a bunch of Ansible scripts. Make sure to understand how they work and customize them to your own project's needs. See some ideas below.
 ====
 
+## Requirements
+
+For the generated `default` molecule test:
+
+* Use _kustomize_ version 3.5.4. It's expected on the path: `cp bin/kustomize /usr/local/bin/kustomize` or set `export KUSTOMIZE_PATH=/absolute_path/bin/kustomize`
+* Install _yamllint_: `brew install yamllint`
+* Error `ModuleNotFoundError: No module named 'openshift'`: `pip install openshift`
+* Install required pacakges: `ansible-galaxy collection install -r requirements.yml` 
+* Set `export OPERATOR_IMAGE=quay.io/bszeti/memcached-operator:v0.0.1` (this sets `newName: quay.io/bszeti/memcached-operator` and `newTag: v0.0.1` in `config/testing/kustomization.yaml`)
+
+Run test:
+```
+mulecule converge
+molecule verify
+molecule destroy
+# or
+molecule test
+```
 
 ## Select tests to run
 
@@ -44,7 +62,15 @@ Running all the tests can take long. During developing a new feature we usually 
 
 ## yamlint
 
-Any `error` detected by `yamlint` stops test execution. Also it generates a lot of unnecessary warnings about Jinja templates. Try to customize the rules or remove `lint` completely in `molecule/default/molecule.yml`
+Any `error` detected by `yamlint` stops test execution. Also it generates a lot of unnecessary warnings about Jinja templates. We can skip cheking either by naming files to `*.yaml.j2` or excluding path by adding `ignore: '**/templates/**'` in `molecule/default/molecule.yml`. Or remove `lint` completely in `molecule/default/molecule.yml`
+
+See https://github.com/adrienverge/yamllint/issues/69
+
+## idempotence
+
+By default `molecule test` destroys and recreates the test namespace. Also it has an `idempotence` step when the `converge` steps are replayed. This is unnecessary because we only deploy the operator at this point, so it's not related to the idempotency of the code we develop. It's https://stackoverflow.com/questions/45428447/how-to-disable-molecule-idempotence-check-on-ansible-role-test[possible] to remove `idempotence` step from the test sequence.
+
+Also if any steps ends with `changed` status during the `idempotence` step - which is unaccepted by molecule, we can add `changed_when: False` to the task.
 
 ## Multi-tenant testing
 
@@ -71,3 +97,10 @@ By default the generated `molecule/default/tasks/mykind_test.yml` creates a CR d
 
 Sometimes the test namespace needs some preparation (for example a pull secret linked to a ServiceAccount) before the operator can be deployed. The best place is probably in `molecule/default/converge.yml` after creating the namespace.
 
+## Run with kind
+
+Local testing can be performed with a temporary Kubernets cluster using https://kind.sigs.k8s.io/[kind]:
+
+* Install _kind_: `brew install kind`
+* Install `docker` python module: `pip install docker`
+* Run test: `molecule test -s kind`
