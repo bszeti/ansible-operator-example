@@ -3,6 +3,7 @@
 Docs:
 
 * Operator SDK: https://sdk.operatorframework.io/docs/building-operators/ansible/
+* Kubebuilder: https://book.kubebuilder.io/
 * Molecule testing: https://molecule.readthedocs.io/en/latest/index.html
 
 See topics:
