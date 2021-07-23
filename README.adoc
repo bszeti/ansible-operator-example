@@ -7,9 +7,9 @@ Docs:
 
 See topics:
 
-* link:doc/project.adoc[Project structure]: Structure of the generated project
-* link:doc/multi-tenant-dev.adoc[Run locally]: Changes to support development on a shared cluster
-* link:doc/ansible.adoc[Run locally]: How Ansible runs in context of an Operator
-* link:doc/coding.adoc[Run locally]: Usual coding patterns
-* link:doc/molecule.adoc[Run locally]: Molecule tests 
-* link:doc/run.adoc[Run locally]: Run the operator on local machine
+* link:doc/project.adoc[Project stucture and Makefile]: Structure of the generated project
+* link:doc/multi-tenant-dev.adoc[Mulit-tenant development]: Changes to support development on a shared cluster
+* link:doc/ansible.adoc[Ansible in an Operator]: How Ansible runs in context of an Operator
+* link:doc/coding.adoc[Coding in yaml]: Usual coding patterns
+* link:doc/molecule.adoc[Molecule testing]: Run and write test for the Operator
+* link:doc/run.adoc[Run operator locally]: Run the operator on local machine
