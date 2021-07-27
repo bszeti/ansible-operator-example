@@ -1,0 +1,185 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "cache.bszeti.github.com/v1alpha1",
+          "kind": "Memcached",
+          "metadata": {
+            "annotations": {
+              "ansible.sdk.operatorframework.io/reconcile-period": "60s"
+            },
+            "name": "myinstance"
+          },
+          "spec": {
+            "fooValue": "mymessage",
+            "size": 2
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.8.0
+    operators.operatorframework.io/project_layout: ansible.sdk.operatorframework.io/v1
+  name: memcached-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - kind: Memcached
+      name: memcacheds.cache.bszeti.github.com
+      version: v1alpha1
+  description: Foo
+  displayName: BSzeti Memcached
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments:
+      - name: bszeti-operator-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --leader-elect
+                - --leader-election-id=memcached-operator
+                env:
+                - name: ANSIBLE_GATHERING
+                  value: explicit
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                image: quay.io/bszeti/memcached-operator:v0.0.1
+                imagePullPolicy: Always
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 6789
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 6789
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources: {}
+                securityContext:
+                  allowPrivilegeEscalation: false
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: bszeti-operator-controller-manager
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          - pods
+          - pods/exec
+          - pods/log
+          - persistentvolumeclaims
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - cache.bszeti.github.com
+          resources:
+          - memcacheds
+          - memcacheds/status
+          - memcacheds/finalizers
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        serviceAccountName: bszeti-operator-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - bszeti
+  - memcached
+  links:
+  - name: Memcached Operator
+    url: https://memcached-operator.domain
+  maturity: alpha
+  provider:
+    name: myprovider
+    url: https://medium.com/@bszeti
+  version: 0.0.1

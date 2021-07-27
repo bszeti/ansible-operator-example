@@ -1,0 +1,63 @@
+# Operator Lifecycle Manager bundle
+
+Docs:
+
+* Operator SDK docs: https://sdk.operatorframework.io/docs/olm-integration/
+* OLM GitHub: https://github.com/operator-framework/operator-lifecycle-manager
+* OLM doc: https://olm.operatorframework.io/docs/
+
+On the top of the operator container image OLM integration requires two other images to be created:
+
+* Bundle: An installation package for the operator. It contains the required yaml files and meta information to install the Operator.
+* Catalog: An index of available bundle versions. It can be used in a _CatalogSource_ resource to make a set of Operators available on a K8s cluster.
+
+The `Makefile` contains commands to create the required resources:
+
+* `make bundle`: Generate manifest files required for a bundle.
+* `make bundle-build bundle-push`: Build and push the bundle container image.
+* `make catalog-build catalog-push`: Build and push the catalog container image.
+
+
+## Bundle
+
+OLM is expecting semantic versioning for the images, so make sure that the `VERSION` _make_ parameter is set accoringly like `0.1.2`.
+
+First we need to generate the required filed for the bundle:
+
+```
+$ make bundle
+  ...
+  Display name for the operator (required):
+  > BSzeti Memcached
+  Description for the operator (required):
+  > My Test Operator
+  Provider's name for the operator (required):
+  > myprovider
+  Any relevant URL for the provider name (optional):
+  > https://medium.com/@bszeti
+  Comma-separated list of keywords for your operator (required):
+  > memcached,example
+  Comma-separated list of maintainers and their emails (e.g. 'name1:email1, name2:email2') (required):
+  > bszeti:me@mycompany.com
+  ...
+  INFO[0000] Creating bundle/metadata/annotations.yaml
+  INFO[0000] Creating bundle.Dockerfile
+  INFO[0000] Bundle metadata generated suceessfully
+  operator-sdk bundle validate ./bundle
+  INFO[0000] Found annotations file                        bundle-dir=bundle container-tool=docker
+  INFO[0000] Could not find optional dependencies file     bundle-dir=bundle container-tool=docker
+  INFO[0000] All validation tests have completed successfully
+```
+
+The tasks runs a couple of steps:
+
+* Creates `config/manifests` directory to record the answers and a _kustomize_ script to collects the required manifests for the deployment of the operator.
+* Operator image url can be set in `IMG` parameter
+* Create `bundle` directory to contain the resources required in the bundle image (using the `config/manifests` dir to get CRD, SA, roles, etc...). Note `bundle/manifests/memcached-operator.clusterserviceversion.yaml` with the `ClusterServiceVersion` that describes the operator's metadata and also contains the _permissions_ and _deployment_ of the operator.
+* Generate `bundle.Dockerfile` for the docker build
+
+[NOTE]
+====
+Modify the generated content under `config/manifests` according to what is needed for the operator "install kit". Command `make bundle` 
+====
+## Operator Catalog

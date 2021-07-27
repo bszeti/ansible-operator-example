@@ -2,6 +2,6 @@
 # used to generate the 'manifests/' directory in a bundle.
 resources:
 - bases/memcached-operator.clusterserviceversion.yaml
-- ../default
+- ../default-with-crd
 - ../samples
 - ../scorecard
