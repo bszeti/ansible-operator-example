@@ -58,6 +58,49 @@ The tasks runs a couple of steps:
 
 [NOTE]
 ====
-Modify the generated content under `config/manifests` according to what is needed for the operator "install kit". Command `make bundle` 
+Modify the generated content in `config/manifests` according to what is needed for the operator installation. The `make bundle` command overwrites the files under the `bundle` directory.
 ====
+
+Build and push the bundle image to an image registry:
+```
+$ make bundle-build bundle-push BUNDLE_IMG=quay.io/bszeti/memcached-operator-bundle:v0.0.1
+```
+
+For testing purpuses the bundle can be installed directly on a K8s cluster without building a Catalog image using `operator-sdk run bundle...`. This creates a temporary Pod in the current namespace that acts as a catalog image (serving a catalog index having the bundle). It also installs the Operator using the bundle automatically, so the a Pod of our operator image should be running.
+
+```
+$ operator-sdk run bundle quay.io/bszeti/memcached-operator-bundle:v0.0.1
+  INFO[0014] Successfully created registry pod: quay-io-bszeti-memcached-operator-bundle-v0-0-1
+  INFO[0014] Created CatalogSource: memcached-operator-catalog
+  INFO[0014] OperatorGroup "operator-sdk-og" created
+  INFO[0015] Created Subscription: memcached-operator-v0-0-1-sub
+  INFO[0019] Approved InstallPlan install-zghhn for the Subscription: memcached-operator-v0-0-1-sub
+  INFO[0019] Waiting for ClusterServiceVersion "default/memcached-operator.v0.0.1" to reach 'Succeeded' phase
+  INFO[0019]   Waiting for ClusterServiceVersion "default/memcached-operator.v0.0.1" to appear
+  INFO[0030]   Found ClusterServiceVersion "default/memcached-operator.v0.0.1" phase: Pending
+  INFO[0032]   Found ClusterServiceVersion "default/memcached-operator.v0.0.1" phase: Installing
+  INFO[0063]   Found ClusterServiceVersion "default/memcached-operator.v0.0.1" phase: Succeeded
+  INFO[0063] OLM has successfully installed "memcached-operator.v0.0.1"
+
+# Verify that new temporary CatalogSource is created in the current namespace
+$ oc get CatalogSource
+  NAME                         DISPLAY               TYPE   PUBLISHER      AGE
+  memcached-operator-catalog   memcached-operator    grpc   operator-sdk   1m
+
+# Verify the test catalog and operatro is running
+oc get pods
+NAME                                                              READY   STATUS      RESTARTS   AGE
+ac095a4638d1696a13777bac081eaa9a0acb339453c13aed762ffabf12ntg89   0/1     Completed   0          1m   -> Job to create test catalog
+quay-io-bszeti-memcached-operator-bundle-v0-0-1                   1/1     Running     0          1m   -> Test catalog
+bszeti-operator-controller-manager-bb7984f77-gs7lc                1/1     Running     0          1m   -> Operator
+
+# Cleanup this test bundle deployment
+$ operator-sdk cleanup memcached-operator
+  INFO[0002] subscription "memcached-operator-v0-0-1-sub" deleted
+  INFO[0002] clusterserviceversion "memcached-operator.v0.0.1" deleted
+  INFO[0002] catalogsource "memcached-operator-catalog" deleted
+  INFO[0002] operatorgroup "operator-sdk-og" deleted
+  INFO[0002] Operator "memcached-operator" uninstalled
+```
+
 ## Operator Catalog
