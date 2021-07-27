@@ -58,7 +58,7 @@ The tasks runs a couple of steps:
 
 [NOTE]
 ====
-Modify the generated content in `config/manifests` according to what is needed for the operator installation. The `make bundle` command overwrites the files under the `bundle` directory.
+Modify the generated content in `config/manifests` according to what is needed for the operator installation. The `make bundle` command overwrites the files under the `bundle` directory. If needed, edit annotations (e.g. bundle channel) in `bundle/metadata/annotations.yaml` or run `operator-sdk generate bundle ...` manually.
 ====
 
 Build and push the bundle image to an image registry:
@@ -82,12 +82,12 @@ $ operator-sdk run bundle quay.io/bszeti/memcached-operator-bundle:v0.0.1
   INFO[0063]   Found ClusterServiceVersion "default/memcached-operator.v0.0.1" phase: Succeeded
   INFO[0063] OLM has successfully installed "memcached-operator.v0.0.1"
 
-# Verify that new temporary CatalogSource is created in the current namespace
+# Verify that the new temporary CatalogSource was created in the current namespace
 $ oc get CatalogSource
   NAME                         DISPLAY               TYPE   PUBLISHER      AGE
   memcached-operator-catalog   memcached-operator    grpc   operator-sdk   1m
 
-# Verify the test catalog and operatro is running
+# Verify that the test catalog and operator Pod is running
 oc get pods
 NAME                                                              READY   STATUS      RESTARTS   AGE
 ac095a4638d1696a13777bac081eaa9a0acb339453c13aed762ffabf12ntg89   0/1     Completed   0          1m   -> Job to create test catalog
@@ -104,3 +104,100 @@ $ operator-sdk cleanup memcached-operator
 ```
 
 ## Operator Catalog
+
+A Catalog image that contains an index of different operator bunlde versions can be created with the `make catalog-build catalog-push` command,that uses https://github.com/operator-framework/operator-registry[opm CLI] (make sure to use a newer version on Mac).
+
+```
+$ make catalog-build catalog-push CATALOG_IMG=quay.io/bszeti/memcached-operator-catalog:v0.0.1
+  ./bin/opm index add --container-tool docker --mode semver --tag quay.io/bszeti/memcached-operator-catalog:v0.0.1 --bundles quay.io/bszeti/memcached-operator-bundle:v0.0.1
+  INFO[0000] building the index                            bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0000] running /usr/local/bin/docker pull quay.io/bszeti/memcached-operator-bundle:v0.0.1  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0001] running docker create                         bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0001] running docker cp                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0002] running docker rm                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0002] Could not find optional dependencies file     file=bundle_tmp881324843/metadata load=annotations with=bundle_tmp881324843
+  INFO[0002] Could not find optional properties file       file=bundle_tmp881324843/metadata load=annotations with=bundle_tmp881324843
+  INFO[0002] Generating dockerfile                         bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0002] writing dockerfile: index.Dockerfile827664081  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0002] running docker build                          bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  INFO[0002] [docker build -f index.Dockerfile827664081 -t quay.io/bszeti/memcached-operator-catalog:v0.0.1 .]  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.1]"
+  /Library/Developer/CommandLineTools/usr/bin/make docker-push IMG=quay.io/bszeti/memcached-operator-catalog:v0.0.1
+  docker push quay.io/bszeti/memcached-operator-catalog:v0.0.1
+  ...
+```
+
+The catalog can be added to a K8s cluster with a `CatalogSource` resource (use namespace `openshift-operators` to make it visible in the whole cluster):
+```
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: bszeti-test-catalog
+  namespace: openshift-operators
+spec:
+  sourceType: grpc
+  image: quay.io/bszeti/memcached-operator-catalog:v0.0.1
+  displayName: BSzeti Test Catalog
+  updateStrategy:
+    registryPoll:
+      interval: 10m0s
+```
+
+Aftewards we should see a Pod providing the catalog endpoint (port 50051) and a new Catalog with our operator versions to install (bundles).
+
+A catalog can be extended by using the `opm` tool. In this example we create catalog `v1.0.0` by extending the earlier catalog `v0.0.1` image with adding bundle version `v0.0.2` and `v0.0.3`.
+
+```
+$ export BUNDLE_IMGS=quay.io/bszeti/memcached-operator-bundle:v0.0.2,quay.io/bszeti/memcached-operator-bundle:v0.0.3
+$ export CATALOG_BASE_IMG=quay.io/bszeti/memcached-operator-catalog:v0.0.1
+$ make catalog-build catalog-push CATALOG_IMG=quay.io/bszeti/memcached-operator-catalog:v1.0.0
+$ ./bin/opm index add --container-tool docker --mode semver --tag quay.io/bszeti/memcached-operator-catalog:v1.0.0 --bundles quay.io/bszeti/memcached-operator-bundle:v0.0.2,quay.io/bszeti/memcached-operator-bundle:v0.0.3 --from-index quay.io/bszeti/memcached-operator-catalog:v0.0.1
+  INFO[0000] building the index                            bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0000] Pulling previous image quay.io/bszeti/memcached-operator-catalog:v0.0.1 to get metadata  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0000] running /usr/local/bin/docker pull quay.io/bszeti/memcached-operator-catalog:v0.0.1  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0001] running /usr/local/bin/docker pull quay.io/bszeti/memcached-operator-catalog:v0.0.1  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0003] Getting label data from previous image        bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0003] running docker inspect                        bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0003] running docker create                         bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0003] running docker cp                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0005] running docker rm                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0007] running /usr/local/bin/docker pull quay.io/bszeti/memcached-operator-bundle:v0.0.2  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0009] running docker create                         bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0010] running docker cp                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0013] running docker rm                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0016] running /usr/local/bin/docker pull quay.io/bszeti/memcached-operator-bundle:v0.0.3  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0019] running docker create                         bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0022] running docker cp                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0024] running docker rm                             bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0027] Could not find optional dependencies file     file=bundle_tmp323266634/metadata load=annotations with=bundle_tmp323266634
+  INFO[0027] Could not find optional properties file       file=bundle_tmp323266634/metadata load=annotations with=bundle_tmp323266634
+  INFO[0027] Could not find optional dependencies file     file=bundle_tmp689119521/metadata load=annotations with=bundle_tmp689119521
+  INFO[0027] Could not find optional properties file       file=bundle_tmp689119521/metadata load=annotations with=bundle_tmp689119521
+  INFO[0027] Generating dockerfile                         bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0027] writing dockerfile: index.Dockerfile077247320  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0027] running docker build                          bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+  INFO[0027] [docker build -f index.Dockerfile077247320 -t quay.io/bszeti/memcached-operator-catalog:v1.0.0 .]  bundles="[quay.io/bszeti/memcached-operator-bundle:v0.0.2 quay.io/bszeti/memcached-operator-bundle:v0.0.3]"
+$ make catalog-push CATALOG_IMG=quay.io/bszeti/memcached-operator-catalog:v1.0.0
+```
+
+Update the earlier _CatalogSource_ to use the new image `quay.io/bszeti/memcached-operator-catalog:v1.0.0`.
+
+[NOTE]
+====
+The bundle's version number must be changed in its _ClusterServiceVersion_ (`bundle/manifests/memcached-operator.clusterserviceversion.yaml`) manually or by running the `make bundle VERSION=...` command, changing only the image tag is not enough.
+====
+
+The OLM UI will only show the latest version within each channel (`alpha` by default) for the operator bundles indexed in the catalog, but it's possible to install any operator (bundle) version from the index. For example:
+```
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: memcached-operator
+  namespace: openshift-operators
+spec:
+  channel: alpha
+  installPlanApproval: Manual
+  name: memcached-operator
+  source: bszeti-test-catalog
+  sourceNamespace: openshift-marketplace
+  startingCSV: memcached-operator.v0.0.1
+```

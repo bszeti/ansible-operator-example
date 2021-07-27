@@ -22,7 +22,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.8.0
     operators.operatorframework.io/project_layout: ansible.sdk.operatorframework.io/v1
-  name: memcached-operator.v0.0.1
+  name: memcached-operator.v0.1.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -62,7 +62,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/bszeti/memcached-operator:v0.0.1
+                image: quay.io/bszeti/memcached-operator:v0.1.1
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -182,4 +182,4 @@ spec:
   provider:
     name: myprovider
     url: https://medium.com/@bszeti
-  version: 0.0.1
+  version: 0.1.1

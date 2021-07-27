@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/bszeti/memcached-operator
-  newTag: v0.0.1
+  newTag: v0.1.1
