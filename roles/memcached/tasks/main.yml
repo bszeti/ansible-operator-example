@@ -1,7 +1,11 @@
 ---
+# - name: all vars
+#   debug: 
+#    msg: "{{ vars }}"
+
 - name: all vars
   debug: 
-   msg: "{{ vars }}"
+   msg: "Hello World! - instance: {{ ansible_operator_meta.name }}"
 
 - name: start memcached
   community.kubernetes.k8s:
@@ -10,17 +14,18 @@
 - name: create  secret
   community.kubernetes.k8s:
     definition: "{{ lookup('template','postgresql-admin-secret.yaml.j2') | from_yaml }}"
-  # when: postgresql.createInstance 
-  when: postgresql.createInstance and not lookup('k8s',kind='Secret', namespace=ansible_operator_meta.namespace, resource_name=ansible_operator_meta.name+"-postgresql-admin")
+  when: values.database.create_instance and not lookup('k8s',kind='Secret', namespace=ansible_operator_meta.namespace, resource_name=ansible_operator_meta.name+"-postgresql-admin")
 
 - name: show templating results
   debug:
     msg: "{{ lookup('template', './postgresql.yaml.j2') }}"
+
 - name: deploy postgresql
   community.kubernetes.k8s:
     definition: "{{ lookup('template','postgresql.yaml.j2') | from_yaml_all | list }}"
-  when: postgresql.createInstance
+  when: values.database.create_instance
 
+# Or create resources one-by-one
 # - name: create postgresql-pvc
 #   community.kubernetes.k8s:
 #     definition: "{{ lookup('template','postgresql/postgresql-pvc.yaml.j2') | from_yaml }}"
@@ -28,7 +33,6 @@
 # - name: create postgresql-deployment
 #   community.kubernetes.k8s:
 #     definition: "{{ lookup('template','postgresql/postgresql-deployment.yaml.j2') | from_yaml }}"
-
 
 # - name: create postgresql-service
 #   community.kubernetes.k8s:

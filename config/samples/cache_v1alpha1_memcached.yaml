@@ -7,3 +7,5 @@ metadata:
 spec:
   size: 2
   fooValue: mymessage
+  database:
+    create_instance: true

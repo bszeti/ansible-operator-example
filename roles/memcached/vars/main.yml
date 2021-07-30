@@ -1,8 +1,8 @@
 ---
 # vars file for Memcached
 values:
-  replicas:  "{{ default_values.replicas | combine(replicas | default({}), recursive=True) }}"
-  foo:       "{{ default_values.foo | combine(foo | default({}), recursive=True) }}"
+  replicas:  "{{ replicas |  default(default_values.replicas) }}"
+  foo:       "{{ foo | default(default_values.foo) }}"
   resources: "{{ default_values.resources | combine(resources | default({}), recursive=True) }}"
   database:  "{{ default_values.database | combine(database | default({}), recursive=True) }}"
 
