@@ -3,15 +3,20 @@ apiVersion: apps/v1
 metadata:
   name: '{{ ansible_operator_meta.name }}-memcached'
   namespace: '{{ ansible_operator_meta.namespace }}'
+  labels:
+    app: memcached
+    {{ common_labels | to_nice_yaml | indent(4) }}
 spec:
   replicas: {{ size }}
   selector:
     matchLabels:
       app: memcached
+      {{ common_labels | to_nice_yaml | indent(4) }}
   template:
     metadata:
       labels:
         app: memcached
+        {{ common_labels | to_nice_yaml | indent(4) }}
     spec:
       containers:
       - name: memcached

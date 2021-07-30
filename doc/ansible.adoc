@@ -17,7 +17,7 @@ The reconciliation loop is not started by default in case of a delete operation,
 
 ## RBAC
 
-An Operator is practically a Pod making Kubernetes API (and maybe other) calls running under it's own ServiceAccount. This ServiceAccount needs to have the right permissions to `create`/`delete`/`get`/`list`/`patch`/`update`/`watch` the Kubernetes resources it needs to manage. Make sure you always have these permissions set in `config/rbac/role.yaml` (which is a `Role` for namespace-scoped or a `CustomRole` for cluster-scoped operators).
+An Operator is practically a Pod making Kubernetes API (and maybe other) calls running under it's own ServiceAccount. This ServiceAccount needs to have the right permissions to `create`/`delete`/`get`/`list`/`patch`/`update`/`watch` the Kubernetes resources it needs to manage. Make sure you always have these permissions set in `config/rbac/role.yaml` (which is a `Role` for namespace-scoped or a `ClusterRole` for cluster-scoped operators).
 
 For example if you want to manage OpenShift Routes you need to add something like this:
 ```
