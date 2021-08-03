@@ -14,3 +14,4 @@ See topics:
 * link:doc/coding.adoc[Coding in yaml]: Usual coding patterns
 * link:doc/molecule.adoc[Molecule testing]: Run and write test for the Operator
 * link:doc/run.adoc[Run operator locally]: Run the operator on local machine
+* link:doc/olm.adoc[Operator Lifecycle Manager]: Create install bundles and catalogs
