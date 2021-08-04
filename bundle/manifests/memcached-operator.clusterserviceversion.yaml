@@ -14,6 +14,9 @@ metadata:
             "name": "myinstance"
           },
           "spec": {
+            "database": {
+              "create_instance": true
+            },
             "fooValue": "mymessage",
             "size": 2
           }
@@ -164,7 +167,7 @@ spec:
         serviceAccountName: bszeti-operator-controller-manager
     strategy: deployment
   installModes:
-  - supported: false
+  - supported: true
     type: OwnNamespace
   - supported: false
     type: SingleNamespace

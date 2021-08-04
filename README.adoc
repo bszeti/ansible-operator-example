@@ -15,3 +15,10 @@ See topics:
 * link:doc/molecule.adoc[Molecule testing]: Run and write test for the Operator
 * link:doc/run.adoc[Run operator locally]: Run the operator on local machine
 * link:doc/olm.adoc[Operator Lifecycle Manager]: Create install bundles and catalogs
+
+Other examples:
+
+* Official example: https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v3/memcached-operator
+* Konveyor Forklift operator: https://github.com/konveyor/forklift-operator
+* https://github.com/infrawatch/service-telemetry-operator
+* https://github.com/darthlukan/day2-ops-operator
