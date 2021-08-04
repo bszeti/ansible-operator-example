@@ -201,3 +201,39 @@ spec:
   sourceNamespace: openshift-marketplace
   startingCSV: memcached-operator.v0.0.1
 ```
+
+## Copy/covert pull secret 
+
+Copy a secret from one namespace to another one. Convert `kubernetes.io/dockercfg` secret to `kubernetes.io/dockerconfigjson`.
+
+```
+PULL_SECRET=$(oc extract -n source-ns secret/dockercfg-secret --to=- --keys=".dockercfg")
+
+REGISTRY_HOST=$( echo $PULL_SECRET | jq --raw-output 'keys[0] | ltrimstr("https://")')
+echo $REGISTRY_HOST
+REGISTRY_AUTH=$( echo $PULL_SECRET | jq  '.[]' )
+
+# Create kubernetes.io/dockercfg Secret
+oc apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dockercfg-secret
+  namespace: target-ns
+type: kubernetes.io/dockercfg
+stringData:
+  .dockercfg: '$PULL_SECRET'
+EOF
+
+# Create kubernetes.io/dockerconfigjson Secret
+oc apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dockerconfigjson-secret
+  namespace: target-ns
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: '{"auths":{"$REGISTRY_HOST": $REGISTRY_AUTH }}'
+EOF
+```
